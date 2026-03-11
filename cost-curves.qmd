@@ -1,0 +1,161 @@
+---
+title: "Workforce Cost Curves: Acute care programme"
+format: 
+   html:
+     df-print: paged
+     toc: true
+---
+
+## Set-up
+
+Goal: Plot the cost per head by age band and sex, for the NRAC acute care programme. These outputs rely on the NRAC cost per head calculations
+
+```{r}
+#| output: false
+
+# set-up
+library(readr)
+library(janitor)
+library(dplyr)
+library(odbc)
+library(ggplot2)
+
+# load functions
+for (filename in list.files(
+  "functions", pattern = "\\.R", full.names = TRUE, 
+  recursive = TRUE)
+) {
+  source(filename)
+}
+
+# load reference files
+cbdcs_column_dictionary_sfr_53 <- read_csv("reference_files/cbdcs_column_dictionary.csv") |> 
+  clean_names() |> 
+  filter(cd_formname == "SFR 5.3") |> 
+  remove_constant() |> 
+  mutate(cd_snakecase_description = make_clean_names(cd_description), 
+         cd_columnno = as.character(paste0("col", cd_columnno)))
+  
+```
+
+## Reproduce the NRAC 26/27 Acute costs curve for all Acute costs
+
+Load the acute cost per head output from the NRAC 26/27 publication. Then, plot the cost per head by age group and sex.
+
+The acute cost per head output is sourced from <https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/2-cost-weights/1-acute_cost_weights.R>.
+
+```{r}
+file_paths <- list.files("data", full.names = TRUE)
+names(file_paths) <- list.files("data")
+
+cost_per_head <- lapply(file_paths, readRDS)
+
+ggplot(cost_per_head[[2]], aes(x = agegrp, y = acute_cph, color = sex))+
+  geom_line()
+```
+
+## 23/24 Acute Workforce Costs Data
+
+Let's attempt to produce a similar output for workforce costs only.
+
+Goal: The goal in this section is to calculate total workforce costs by line number, following a similar methodology as in the [NRAC hospital activity costs](https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/1-costs/3-hospital_activity_costs.R)
+
+"Acute" costs broadly refers to the costs of Inpatient care. Inpatient pay costs are broken down in SFR 5.3, col 3 (number of discharges), col 7-3 (staff type).
+
+Let's load the workforce SFR 5.3 data.
+```{r}
+id_df <- read_csv(
+  "/PHI_conf/Finance/CostsBook/Reference Files/userid.csv",
+  col_types = "c"
+)
+uid <- id_df$username
+pwd <- id_df$password
+
+sfr_53 <- get_costs_data(2023, "SFR 5.3") |>
+  mutate(lineno = as.character(lineno)) |> 
+  select(formname, provider, location, lineno, col2, col3, c(col7:col12)) |>
+  # remove all specialties total (line 550) and rows where all pay columns are blank (NA)
+  filter(lineno != "550", !if_all(where(is.numeric), ~ is.na(.x)))
+
+
+# TODO turn renaming code below into a function
+
+# replace column names with machine readable names from the CBDCS column dictionary
+
+# list columns to rename
+columns2rename <- colnames(sfr_53)[startsWith(colnames(sfr_53), "col")]
+
+# get their machine readable description
+new_column_names <- cbdcs_column_dictionary_sfr_53 |> 
+  filter(cd_columnno %in% columns2rename) |> 
+  pull(cd_snakecase_description)
+
+# rename the columns in the sfr data
+colnames(sfr_53)[startsWith(colnames(sfr_53), "col")] <- new_column_names
+
+# replace blank costs by 0 so that we can sum thing up without spawning NAs
+sfr_53[is.na(sfr_53)] <- 0
+
+sfr_53
+```
+
+
+Next, let's recode SFR line numbers to map these costs to the correct specialties in the Scottish Morbidity Records(SMR) activity data.
+```{r}
+
+# These are require for matching to SMR01 activity
+# combine general surgery (excluding vascular) and vascular surgery line numbers 
+# into one "dummy" line number (120)
+# combine cardiac surgery and thoracic surgery line numbers into one "dummy" 
+# line number (180)
+# combine general medicine specialties costed separately into the general 
+# medicine line number
+
+sfr_53_recode <- sfr_53 %>% 
+  mutate(lineno = case_when(
+    #"Clinical Oncology" merged with line 234 "Oncology" in 2019/20 Cost Book  
+    lineno == '290' ~ '234',
+    # combining general surgery (excluding vascular) and vascular surgery line  
+    # numbers into one "dummy" line number (120)
+    lineno == '121' ~ '120',
+    lineno == '122' ~ '120',
+    # combining cardiac surgery and thoracic surgery line numbers into one "dummy" 
+    # line number (180)
+    lineno == '181' ~ '180',
+    lineno == '182' ~ '180',
+    # combining general medicine specialties costed separately into the general 
+    # medicine line number (230)
+    lineno == '231' ~ '230',
+    lineno == '345' ~ '230',
+    TRUE ~ lineno))
+```
+
+Finally, let's aggregate the workforce costs at specialty level (ie. aggregate costs by line number). Here we assume that the proportion of the costs that are fixed is 1. We assume this because we have limited data on which proportion of the workforce costs reported are fixed (eg. core staff), and which are variable (eg. NHS staff bank, overtime, etc.).
+
+```{r}
+workforce_costs_by_lineno <- sfr_53 |> 
+  group_by(formname, lineno) |> 
+  summarise(across(where(is.numeric), ~sum(.x)), .groups = "drop") |> 
+  mutate(fixed_costs_prop = 1, variable_costs_prop = 0)
+
+workforce_costs_by_lineno
+```
+
+
+
+## Next steps
+-   import the NRAC 26/27 SMR01, SMR01E and SBR extracts
+-   feed the output of the simplified hospital activity costs to `1-Acute_cost_weights.R`
+
+## Questions on methodology
+-   In NRAC Obstetric specialist costs figures (SFR 5.5, lines 430 and 440) are added to Inpatient costs, should we follow this same grouping for this analysis? [NRAC hospital costs script](https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/1-costs/3-hospital_activity_costs.R)
+
+-   Fixed vs Variable split? The [NRAC acute costs weight script](https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/2-cost-weights/1-acute_cost_weights.R) uses fixed and variable cost proportions to derive a total cost. However these proportions were derived from a SPSS syntax using PLICS data which does not seem to include workforce costs. This raises the question on whether a these fixed and variable cost ratios can be applied to the workforce costs in SFR 5.2.
+
+-   Should workforce costs from other SFRs be included? According to the methodology in the NRAC acute costs weight script Acute doesn't only included inpatient activity.
+
+-   Cost per specialty, or cost for all specialties?
+
+-   Which activity data should be matched on to costs? Acute care program combines SMR01, SMR01E and SBR (Special Care Baby Unit) data
+
+-   Should NHS Borders 23/24 Costsbook data be included? Have they resubmitted?
