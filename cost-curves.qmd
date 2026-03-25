@@ -244,8 +244,8 @@ for(i in 1:length(staff_types)){
       tooltip = paste0("Sex: ", sex_label, "\nAge: ", agegrp_label, "\nCPH: ", acute_cph)))+
     # geom_line_interactive(aes(group = sex_label))+
     geom_line_interactive()+
-    
-    
+
+  
     # labels, colors, themes
     scale_x_continuous(breaks = c(1:length(x_axis_labels)), labels = x_axis_labels)+
     labs(title = staff_type_i, x = "Age Group", y = "Cost per Head")+
@@ -266,7 +266,6 @@ patchwork <- wrap_plots(acute_plots,
                         nrow = 3,
                         axis_titles = "collect", 
                         guides = "collect")
-
 
 # CSS options - separate hover and selection styles
 hover_css <- "
@@ -297,6 +296,7 @@ girafe(ggobj = patchwork, options = list(
   ),
   opts_selection_inv(css = inv_css)
 ))
+
 ```
 
 ## Next steps
@@ -317,4 +317,3 @@ girafe(ggobj = patchwork, options = list(
 -   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
 -   Combines workforce costs from SFRs: 5.3, 5.5, 5.7N, 5.7.
 -   Use all the activity data A&E, SMR00, and SMR01.
-
