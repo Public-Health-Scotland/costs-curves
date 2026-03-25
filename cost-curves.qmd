@@ -244,8 +244,7 @@ for(i in 1:length(staff_types)){
       tooltip = paste0("Sex: ", sex_label, "\nAge: ", agegrp_label, "\nCPH: ", acute_cph)))+
     # geom_line_interactive(aes(group = sex_label))+
     geom_line_interactive()+
-
-  
+    
     # labels, colors, themes
     scale_x_continuous(breaks = c(1:length(x_axis_labels)), labels = x_axis_labels)+
     labs(title = staff_type_i, x = "Age Group", y = "Cost per Head")+
@@ -296,7 +295,6 @@ girafe(ggobj = patchwork, options = list(
   ),
   opts_selection_inv(css = inv_css)
 ))
-
 ```
 
 ## Next steps
