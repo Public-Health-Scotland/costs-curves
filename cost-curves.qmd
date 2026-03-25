@@ -242,7 +242,6 @@ for(i in 1:length(staff_types)){
     geom_point_interactive(aes(
       shape = sex_label,
       tooltip = paste0("Sex: ", sex_label, "\nAge: ", agegrp_label, "\nCPH: ", acute_cph)))+
-    # geom_line_interactive(aes(group = sex_label))+
     geom_line_interactive()+
     
     # labels, colors, themes
@@ -276,10 +275,12 @@ hover_css <- "
 "
 
 selection_css <- "
+  filter: brightness(75%);
+  cursor: pointer;
+  transition: all 0.5s ease-out;
   filter: brightness(1.15);
-  stroke-width: 2px;
-  stroke: #FF5722;
-  fill-opacity: 1;
+  r: 2px;
+  stroke-width: 1.5px 
 "
 
 inv_css <- "opacity:0.5; transition: all 0.2s ease-out;"
@@ -290,11 +291,23 @@ girafe(ggobj = patchwork, options = list(
   opts_tooltip(css = "background-color:lightgray; color:black; border-radius:10px;"),
   opts_selection(
     css = selection_css,
-    type = "single",  # or "line" if you want to select lines
+    only_shiny = FALSE, # needed for selection to work in Quarto
+    type = "single", 
     linked = TRUE
   ),
   opts_selection_inv(css = inv_css)
 ))
+# girafe(ggobj = acute_plots$AHP, options = list(
+#   # opts_hover(css = hover_css),
+#   opts_tooltip(css = "background-color:lightgray; color:black; border-radius:10px;"),
+#   opts_selection(
+#     css = selection_css,
+#     only_shiny = FALSE,
+#     type = "single", 
+#     linked = TRUE
+#   ),
+#   opts_selection_inv(css = inv_css)
+# ))
 ```
 
 ## Next steps
