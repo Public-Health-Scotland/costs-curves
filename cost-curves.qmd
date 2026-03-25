@@ -227,13 +227,14 @@ for(i in 1:length(staff_types)){
 
   p <- ggplot(workforce_cost_per_head |> 
                 filter(staff_type_label == staff_type_i),
-              aes(x = agegrp, y = acute_cph, color = sex_label, data_id = sex_label))+
+              aes(x = agegrp, y = acute_cph, color = sex_label, group = sex_label, data_id = sex_label))+
     
     # plot points and lines
     geom_point_interactive(aes(
       shape = sex_label,
       tooltip = paste0("Sex: ", sex_label, "\nAge: ", agegrp_label, "\nCPH: ", acute_cph)))+
-    geom_line_interactive(aes(group = sex_label))+
+    # geom_line_interactive(aes(group = sex_label))+
+    geom_line_interactive()+
     
     
     # labels, colors, themes
@@ -257,34 +258,36 @@ patchwork <- wrap_plots(acute_plots,
                         axis_titles = "collect", 
                         guides = "collect")
 
-# css options for hovering over/selecting a line or point
-  select_hover_css <- "
+
+# CSS options - separate hover and selection styles
+hover_css <- "
   filter: brightness(75%);
   cursor: pointer;
   transition: all 0.5s ease-out;
-  filter: brightness(1.15);
-  stroke-width: 1.3px 
+  stroke-width: 1.5px;
+  fill-opacity: 0.8;
 "
-  # css for stuff that isnt selected, stuff that isnt selected is greyed out
-  inv_css <- "opacity:0.3; transition: all 0.2s ease-out;"
-  
-  # Convert ggplot to interactive Girafe object
-  # girafe(ggobj = p, options = list(
-  #   opts_hover(css = select_hover_css),
-  #   opts_tooltip(css = "background-color:lightgray; color:black; border-radius:10px;"), 
-  #   opts_selection(css = select_hover_css, type = "multiple"), 
-  #   opts_selection_inv(css = inv_css)
-  # ))
 
+selection_css <- "
+  filter: brightness(1.15);
+  stroke-width: 2px;
+  stroke: #FF5722;
+  fill-opacity: 1;
+"
 
-# add interactive tooltips
+inv_css <- "opacity:0.5; transition: all 0.2s ease-out;"
+
+# Add interactive tooltips with proper selection
 girafe(ggobj = patchwork, options = list(
-      opts_hover(css = select_hover_css),
-      opts_tooltip(css = "background-color:lightgray; color:black; border-radius:10px;"), 
-      opts_selection(css = select_hover_css), 
-      opts_selection_inv(css = inv_css)
-  )
-       )
+  opts_hover(css = hover_css),
+  opts_tooltip(css = "background-color:lightgray; color:black; border-radius:10px;"),
+  opts_selection(
+    css = selection_css,
+    type = "single",  # or "line" if you want to select lines
+    linked = TRUE
+  ),
+  opts_selection_inv(css = inv_css)
+))
 ```
 
 ## Next steps
