@@ -7,11 +7,13 @@
 #' @export
 #'
 #' @examples see below the function
+
 get_costs_data <- function(cbdcs_year, sfr_names) {
 
   sfr_names <- paste0( "('", paste0(sfr_names, collapse = "' , '"), "')")
   
   # Define the sfr_database connection with APXP
+
   connect <- odbc::dbConnect(odbc::odbc(),
                              dsn = "APXP",
                              uid = uid,

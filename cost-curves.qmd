@@ -30,7 +30,15 @@ for (filename in list.files(
 ) {
   source(filename)
 }
-  
+
+# load reference files
+cbdcs_column_dictionary_sfr_53 <- read_csv("reference_files/cbdcs_column_dictionary.csv") |> 
+  clean_names() |> 
+  filter(cd_formname == "SFR 5.3") |> 
+  remove_constant() |> 
+  mutate(cd_snakecase_description = make_clean_names(cd_description), 
+         cd_columnno = as.character(paste0("col", cd_columnno)))
+
 ```
 
 ## Reproduce the NRAC 26/27 Acute costs curve for all Acute costs
@@ -308,3 +316,4 @@ girafe(ggobj = patchwork, options = list(
 -   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
 -   Combines workforce costs from SFRs: 5.3, 5.5, 5.7N, 5.7.
 -   Use all the activity data A&E, SMR00, and SMR01.
+
