@@ -75,6 +75,7 @@ We source the necessary workforce costs data from various Scottish Financial Ret
 
 ***NHS Borders costs are excluded from these data since they were unable to submit a full SFR dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21)***
 
+
 ```{r}
 id_df <- read_csv(
   "/PHI_conf/Finance/CostsBook/Reference Files/userid.csv",
