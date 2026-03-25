@@ -2,7 +2,7 @@
 
 1. Clone the repo.
 
-2. Copy the `data` folder from Maiana's local project.
+2. Copy the `data` and `outputs` folder from Maiana's local project.
 
 3. Open the `.qmd` file and click `Render`.
 
