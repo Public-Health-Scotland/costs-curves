@@ -16,14 +16,22 @@ Throughout this report we split this main goal into smaller goals to make things
 #| output: false
 
 # set-up
+
+# data retrieval and wrangling tools
+library(rlist)
 library(readr)
 library(janitor)
 library(dplyr)
 library(tidyr)
 library(odbc)
-library(ggplot2)
 
-# load functions
+# data viz tools for pretty interactive graphs
+library(ggplot2)
+library(patchwork)
+library(ggiraph)
+library(viridis)
+
+# load custom functions
 for (filename in list.files(
   "functions", pattern = "\\.R", full.names = TRUE, 
   recursive = TRUE)
@@ -32,12 +40,17 @@ for (filename in list.files(
 }
 
 # load reference files
-cbdcs_column_dictionary_sfr_53 <- read_csv("reference_files/cbdcs_column_dictionary.csv") |> 
+cbdcs_column_dictionary_sfr_53 <- read_csv("reference_files/cbdcs_column_dictionary.csv", show_col_types = FALSE) |> 
   clean_names() |> 
   filter(cd_formname == "SFR 5.3") |> 
   remove_constant() |> 
   mutate(cd_snakecase_description = make_clean_names(cd_description), 
          cd_columnno = as.character(paste0("col", cd_columnno)))
+
+#if outputs directory doesnt exist create it
+if(!(dir.exists("./outputs"))){
+  dir.create("./outputs")
+}
 
 ```
 
@@ -48,13 +61,15 @@ Load the acute cost per head output from the NRAC 26/27 publication. Then, plot 
 The acute cost per head output is sourced from <https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/2-cost-weights/1-acute_cost_weights.R>.
 
 ```{r}
-file_paths <- list.files("data", full.names = TRUE)
-names(file_paths) <- list.files("data")
 
-cost_per_head <- lapply(file_paths, readRDS)
+total_exp_cost_per_head <- readRDS("data/acute_cost_per_head_v26_27.rds") |>
+  mutate(acute_cph = round(acute_cph, 2)) |> 
+  add_age_labels() |> 
+  add_sex_label()
 
-ggplot(cost_per_head[[2]], aes(x = agegrp, y = acute_cph, color = sex))+
-  geom_line()
+p <- plot_cost_curves(total_exp_cost_per_head, x_title = "Acute cost per head by age and sex for total expenditure")
+
+girafe_plot_options(p)
 ```
 
 Let's attempt to produce a similar output for workforce costs only.
@@ -67,14 +82,13 @@ We source the necessary workforce costs data from various Scottish Financial Ret
 
 | Form Name | Description | Columns |
 |-------------------|-------------------|----------------------------------|
-| SFR 5.3 | Inpatient costs | col 3 (number of discharges), col 7-13 (costs by staff type) |
+| SFR 5.3 | Inpatient costs | col 3 (number of discharges), col 7-12 (costs by staff type) |
 | SFR 5.5 | Day Case costs | col 1 (number of attendances), col 5-10 (costs by staff type) |
 | SFR 5.7 | Outpatients treated in consultant clinics | col 1 (number of attendances), col 6-11 (costs by staff type) |
 | SFR 5.7N | Outpatients treated at nurse-led clinics | col 1 (number of attendances), col 4-7 (costs by staff type) |
 | SFR 5.9 | Day Patients | col 1 (number of attendances), col 4-8 (costs by staff type) |
 
 ***NHS Borders costs are excluded from these data since they were unable to submit a full SFR dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21)***
-
 
 ```{r}
 id_df <- read_csv(
@@ -94,7 +108,6 @@ sfr_53 <- get_costs_data(2023, "SFR 5.3") |>
 
 # rename columns to something humans can understand
 colnames(sfr_53) <- human_cbdcs_colnames(sfr_53) 
-sfr_53
 
 sfr_55 <- get_costs_data(2023, "SFR 5.5")|> 
   select(all_of(id_colnames), col1, c(col5:col10)) |>
@@ -131,6 +144,12 @@ colnames(sfr_59) <- human_cbdcs_colnames(sfr_59)
 
 ```
 
+Here's an example of what the SFR data looks like.
+
+```{r}
+sfr_53
+```
+
 Next, let's recode SFR line numbers to map these costs to the correct specialties in the Scottish Morbidity Records(SMR) activity data. Finally, let's aggregate the workforce costs at specialty level (ie. aggregate costs by line number and patient type). Here we assume that the proportion of the costs that are fixed is 1. We assume this because we have limited data on which proportion of the workforce costs reported are fixed (eg. core staff), and which are variable (eg. NHS staff bank, overtime, etc.). This is all neatly packaged in the function `parse_cost_by_lineno` and iterated over all the SFRs.
 
 ```{r}
@@ -152,53 +171,7 @@ The above is executed by a modified version of the NRAC Acute costs weights scri
 
 ```{r}
 
-add_age_labels <- function(.){
-  . |> 
-  mutate(agegrp_label = case_when(
-    agegrp == 1 ~ "0-1",
-    agegrp == 2 ~ "2-4",
-    agegrp == 3 ~ "5-9",
-    agegrp == 4 ~ "10-14",
-    agegrp == 5 ~ "15-19",
-    agegrp == 6 ~ "20-24",
-    agegrp == 7 ~ "25-29",
-    agegrp == 8 ~ "30-34",
-    agegrp == 9 ~ "35-39",
-    agegrp == 10 ~ "40-44",
-    agegrp == 11 ~ "45-49",
-    agegrp == 12 ~ "50-54",
-    agegrp == 13 ~ "55-59",
-    agegrp == 14 ~ "60-64",
-    agegrp == 15 ~ "65-69",
-    agegrp == 16 ~ "70-74",
-    agegrp == 17 ~ "75-79",
-    agegrp == 18 ~ "80-84",
-    agegrp == 19 ~ "85-89",
-    agegrp == 20 ~ "90+",
-    TRUE ~ NA
-                )
-         )
-}
-
-add_sex_label <- function(.){
-  . |> mutate(sex_label = ifelse(sex == 1, "Male", "Female"))
-}
-
-add_staff_label <- function(.){
-  . |> 
-    mutate(staff_type_label = case_when(
-      staff_type == "ahp_staff_direct_supplies_number" ~ "AHP", 
-      staff_type == "medical_dental_staff_number" ~ "Medical & Dental", 
-      staff_type == "nursing_staff_number" ~ "Nursing", 
-      staff_type == "other_direct_care_number" ~ "Other Direct Care", 
-      staff_type == "pharmacy_staff_direct_supplies_number" ~ "Pharmacy", 
-      staff_type == "theatre_staff_direct_supplies_number" ~ "Theatre",
-      TRUE ~ NA
-    )
-  )
-}
-  
-workforce_cost_per_head <- readRDS("data/acute_cost_per_head_workforce_v26_27.rds") |> 
+workforce_cost_per_head <- readRDS("data/acute_cost_per_head_workforce_all_staff_v26_27.rds") |> 
   mutate(acute_cph = round(acute_cph, 1)) |> 
   add_staff_label() |> 
   add_age_labels() |> 
@@ -210,22 +183,11 @@ workforce_cost_per_head |> select(staff_type_label, agegrp_label, sex_label, acu
 
 ## Acute Costs Curves by Staff Type
 
-Now that we have the cost per head data by staff type, age-group & sex, let's plot the costs curves.
+Now that we have the cost per head data by staff type, age-group & sex, let's plot the costs curves. The code below loops through each staff type and line chart showing the cost per head by age group, split between males and females.
 
 ```{r}
-library(rlist)
-library(ggplot2)
-library(patchwork)
-library(ggiraph)
-library(viridis)
 
 staff_types <- unique(workforce_cost_per_head$staff_type_label)
-
-x_axis_labels <- workforce_cost_per_head |> 
-  arrange(agegrp) |> 
-  select(agegrp, agegrp_label) |> 
-  distinct() |> 
-  pull(agegrp_label)
 
 # create a cost-curves plot for each staff type
 acute_plots <- list()
@@ -233,98 +195,73 @@ acute_plots <- list()
 for(i in 1:length(staff_types)){
   
   staff_type_i <- staff_types[i]
-
-  p <- ggplot(workforce_cost_per_head |> 
-                filter(staff_type_label == staff_type_i),
-              aes(x = agegrp, y = acute_cph, color = sex_label, group = sex_label, data_id = sex_label))+
-    
-    # plot points and lines
-    geom_point_interactive(aes(
-      shape = sex_label,
-      tooltip = paste0("Sex: ", sex_label, "\nAge: ", agegrp_label, "\nCPH: ", acute_cph)))+
-    geom_line_interactive()+
-    
-    # labels, colors, themes
-    scale_x_continuous(breaks = c(1:length(x_axis_labels)), labels = x_axis_labels)+
-    labs(title = staff_type_i, x = "Age Group", y = "Cost per Head")+
-    scale_color_manual_interactive(values = viridis(begin = 0.25, end = 0.75, n = 2))+
-    theme_minimal()+
-    theme(axis.text.x = element_text(size = 6, angle = 45), 
-          plot.title = element_text(size = 10)) 
+  
+  data_i <- workforce_cost_per_head |> 
+                filter(staff_type_label == staff_type_i)
+  
+  plot_i <- plot_cost_curves(x = data_i, x_title = staff_type_i)
   
   # add plot to list  
-  acute_plots <- list.append(acute_plots, p)
+  acute_plots <- list.append(acute_plots, plot_i)
   
   names(acute_plots)[i] <- staff_type_i
 }
 
-# combine all the plots
-patchwork <- wrap_plots(acute_plots, 
+```
+
+Let's take a look at the costs curves for Acute across all staff types.
+
+```{r}
+
+girafe_plot_options(acute_plots[[which(names(acute_plots) == "All Staff")]])
+```
+
+Breakdown of the cost per head by staff type.
+
+```{r}
+# combine all the plots except for all staff
+patchwork <- wrap_plots(acute_plots[which(names(acute_plots) != "All Staff")], 
                         ncol = 2,
                         nrow = 3,
                         axis_titles = "collect", 
                         guides = "collect")
 
-# CSS options - separate hover and selection styles
-hover_css <- "
-  filter: brightness(75%);
-  cursor: pointer;
-  transition: all 0.5s ease-out;
-  stroke-width: 1.5px;
-  fill-opacity: 0.8;
-"
+girafe_plot_options(patchwork)
 
-selection_css <- "
-  filter: brightness(75%);
-  cursor: pointer;
-  transition: all 0.5s ease-out;
-  filter: brightness(1.15);
-  r: 2px;
-  stroke-width: 1.5px 
-"
-
-inv_css <- "opacity:0.5; transition: all 0.2s ease-out;"
-
-# Add interactive tooltips with proper selection
-girafe(ggobj = patchwork, options = list(
-  opts_hover(css = hover_css),
-  opts_tooltip(css = "background-color:lightgray; color:black; border-radius:10px;"),
-  opts_selection(
-    css = selection_css,
-    only_shiny = FALSE, # needed for selection to work in Quarto
-    type = "single", 
-    linked = TRUE
-  ),
-  opts_selection_inv(css = inv_css)
-))
-# girafe(ggobj = acute_plots$AHP, options = list(
-#   # opts_hover(css = hover_css),
-#   opts_tooltip(css = "background-color:lightgray; color:black; border-radius:10px;"),
-#   opts_selection(
-#     css = selection_css,
-#     only_shiny = FALSE,
-#     type = "single", 
-#     linked = TRUE
-#   ),
-#   opts_selection_inv(css = inv_css)
-# ))
 ```
-
-## Next steps
-
--   load the output explore and make charts
-
--   run a version with total workforce costs
 
 ## Questions on methodology
 
+-   What are these costs curves going to be used for?
+
+    -   SR overlayed the acute costs curves with population curves, if we isolate solely workforce costs does that change the picture? Looking to predict workforce needs based on population/demand.
+    -   JP is trying to estimate the burden of disease and workforce demands, looking to do some modelling on how burden of disease will impact workforce demand.
+
 -   Fixed vs Variable split? The [NRAC acute costs weight script](https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/2-cost-weights/1-acute_cost_weights.R) uses fixed and variable cost proportions to derive a total cost based on whether the patient is an inpatient or daycase. However these proportions were derived from a SPSS syntax using PLICS data which does not seem to include workforce costs. This raises the question on whether a these fixed and variable cost ratios can be applied to the workforce costs in SFR 5.3. Ask SG if they how they plan to use the workforce cost per head, do they plan to use it as proportion of total costs?
 
--   Cost per specialty, or cost for all specialties?
+    -   if not too time consuming try re running the analysis using the existsing fixed/variable split
+
+-   Include Laboratory recharge costs? According to the costsbook user manual they include all costs such as: supplies, staff, and allocated costs such as heat, light and capital charges.
+
+    -   No labs costs needed.
 
 ## Caveats Summary
 
 -   Workforce costs are assumed to be 100% fixed costs.
 -   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
 -   Combines workforce costs from SFRs: 5.3, 5.5, 5.7N, 5.7.
--   Use all the activity data A&E, SMR00, and SMR01.
+-   Uses activity data A&E, SMR00, and SMR01 to derive total costs.
+-   Apart from Medical, Dental and Nursing, all other staff costs include supplies.
+-   Cost per head is derived by dividing the total costs by mid year population estimates from NRS.
+
+## Next Steps
+
+-   Overlay workforce costs curves with acute expenditure.
+
+-   Re-run with the exists fixed/variable costs breakdown used in NRAC.
+
+-   Meet with SR week starting 29th March, and send JP a `.csv` of the acute workforce cost per head in relational format.
+
+-   TBC: get costs-curve for the care of the elderly program for SR.
+
+-   Bonus: publish and share Quarto report with a password.
