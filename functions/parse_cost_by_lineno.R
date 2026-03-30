@@ -62,8 +62,9 @@ parse_cost_by_lineno <- function(sfr){
     pivot_longer(where(is.numeric) & !starts_with(standard_colname),
                  names_to = "staff_type", values_to = "cost") |>
    
-     # setting fixed/variable costs to 100% fixed
-    mutate(fixed_costs_prop = 1, variable_costs_prop = 0) |> 
+    # join fixed and variable cost proportions
+    # mutate(fixed_costs_prop = 1, variable_costs_prop = 0) |> 
+    left_join(fixed_variable_prop, by = c("ipdc", "lineno")) |> 
     
     # calculate fixed and variable costs
     mutate(fixed_cost = cost * fixed_costs_prop, 

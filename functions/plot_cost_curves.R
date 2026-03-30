@@ -36,7 +36,8 @@ plot_cost_curves <- function(x, x_title){
     
     # labels, colors, themes
     scale_x_continuous(breaks = c(1:length(x_axis_labels)), labels = x_axis_labels)+
-    labs(title = x_title, x = "Age Group", y = "Cost per Head")+
+    labs(title = x_title, x = "Age Group", y = "Cost per Head", 
+         color = "Sex", shape = "Sex")+
     scale_color_manual_interactive(values = viridis(begin = 0.25, end = 0.75, n = 2))+
     theme_minimal()+
     theme(axis.text.x = element_text(size = 6, angle = 45), 

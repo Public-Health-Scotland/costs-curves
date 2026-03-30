@@ -18,6 +18,7 @@ Throughout this report we split this main goal into smaller goals to make things
 # set-up
 
 # data retrieval and wrangling tools
+library(haven)
 library(rlist)
 library(readr)
 library(janitor)
@@ -30,6 +31,7 @@ library(ggplot2)
 library(patchwork)
 library(ggiraph)
 library(viridis)
+library(scales)
 
 # load custom functions
 for (filename in list.files(
@@ -52,6 +54,10 @@ if(!(dir.exists("./outputs"))){
   dir.create("./outputs")
 }
 
+# import the fixed and variable cost proportions for the Acute care programme
+fixed_variable_prop <- read_sav("data/Fixed_Variable_Ratios_Acute.sav") |> 
+  mutate(across(where(is.numeric), ~.x/100)) |> 
+  rename("fixed_costs_prop" = "fixed", "variable_costs_prop" = "variable")
 ```
 
 ## Reproduce the NRAC 26/27 Acute costs curve for all Acute costs
@@ -171,7 +177,7 @@ The above is executed by a modified version of the NRAC Acute costs weights scri
 
 ```{r}
 
-workforce_cost_per_head <- readRDS("data/acute_cost_per_head_workforce_all_staff_v26_27.rds") |> 
+workforce_cost_per_head <- readRDS("data/acute_cost_per_head_workforce_all_staff_31032026.rds") |> 
   mutate(acute_cph = round(acute_cph, 1)) |> 
   add_staff_label() |> 
   add_age_labels() |> 
@@ -230,6 +236,38 @@ girafe_plot_options(patchwork)
 
 ```
 
+## Comparison
+
+Does the acute cost per head for workforce costs follow the same trend as the cost per head for total expenditure?
+
+```{r}
+
+# create a dataframe with workforce data for all staff and data for total expenditure
+comparison_df <- workforce_cost_per_head |> 
+  filter(staff_type == "all_staff") |> 
+  select(-staff_type, -staff_type_label) |> 
+  left_join(total_exp_cost_per_head, by = c("agegrp", "sex", "agegrp_label", "sex_label"), suffix = c("_workforce", "_total")) |> 
+  pivot_longer(c("acute_cph_workforce", "acute_cph_total"), names_to = "costs_type", values_to = "acute_cph") |> 
+  mutate(costs_type = if_else(costs_type == "acute_cph_workforce", "workforce", "total expenditure"), acute_cph_log = log(acute_cph))
+  
+# filter females
+comparison_df_f <- comparison_df |> 
+  filter(sex == "2")
+
+# filter males
+comparison_df_m <- comparison_df |> 
+  filter(sex == "1")
+
+
+# plot one chart for females and one chart for males
+p_f <- plot_total_vs_workforce(comparison_df_f, "Acute cost per head for females, total expenditure VS workforce" )
+p_m <- plot_total_vs_workforce(comparison_df_m, "Acute cost per head for males, total expenditure VS workforce" )
+
+girafe_plot_options(p_f)
+girafe_plot_options(p_m)
+
+```
+
 ## Questions on methodology
 
 -   What are these costs curves going to be used for?
@@ -239,7 +277,7 @@ girafe_plot_options(patchwork)
 
 -   Fixed vs Variable split? The [NRAC acute costs weight script](https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/2-cost-weights/1-acute_cost_weights.R) uses fixed and variable cost proportions to derive a total cost based on whether the patient is an inpatient or daycase. However these proportions were derived from a SPSS syntax using PLICS data which does not seem to include workforce costs. This raises the question on whether a these fixed and variable cost ratios can be applied to the workforce costs in SFR 5.3. Ask SG if they how they plan to use the workforce cost per head, do they plan to use it as proportion of total costs?
 
-    -   if not too time consuming try re running the analysis using the existsing fixed/variable split
+    -   if not too time consuming try re running the analysis using the existing fixed/variable split
 
 -   Include Laboratory recharge costs? According to the costsbook user manual they include all costs such as: supplies, staff, and allocated costs such as heat, light and capital charges.
 
