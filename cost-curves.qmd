@@ -87,7 +87,7 @@ Goal: The goal in this section is to calculate total workforce costs by line num
 We source the necessary workforce costs data from various Scottish Financial Returns (SFR), see table below:
 
 | Form Name | Description | Columns |
-|-------------------|-------------------|----------------------------------|
+|----|----|----|
 | SFR 5.3 | Inpatient costs | col 3 (number of discharges), col 7-12 (costs by staff type) |
 | SFR 5.5 | Day Case costs | col 1 (number of attendances), col 5-10 (costs by staff type) |
 | SFR 5.7 | Outpatients treated in consultant clinics | col 1 (number of attendances), col 6-11 (costs by staff type) |
