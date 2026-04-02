@@ -4,7 +4,13 @@
 .Ruserdata
 
 *.[Rr][Dd][Ss]
+*.[Ss][Aa][Vv]
+*.html
 
 data/
+data-archive/
 /.quarto/
 **/*.quarto_ipynb
+
+cost-curves_files/
+cost-curves.html
