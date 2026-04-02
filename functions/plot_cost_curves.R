@@ -30,7 +30,8 @@ plot_cost_curves <- function(x, x_title){
                                "Sex: ", sex_label,
                                "\nAge: ", agegrp_label,
                                "\nCPH: ", acute_cph)
-                             )
+                             ), 
+                           hover_nearest = TRUE
                            )+
     geom_line_interactive()+
     

@@ -30,7 +30,8 @@ plot_total_vs_workforce <- function(x, x_title){
                                "Costs Category: ", costs_type,
                                "\nAge: ", agegrp_label,
                                "\nCPH: ", acute_cph)
-                             )
+                             ), 
+                           hover_nearest = TRUE
                            )+
     geom_line_interactive()+
 
