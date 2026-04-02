@@ -4,9 +4,11 @@
 .Ruserdata
 
 *.[Rr][Dd][Ss]
+*.[Ss][Aa][Vv]
 *.html
 
 data/
+data-archive/
 /.quarto/
 **/*.quarto_ipynb
 

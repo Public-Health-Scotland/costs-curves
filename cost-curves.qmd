@@ -56,7 +56,7 @@ if(!(dir.exists("./outputs"))){
 
 # import the fixed and variable cost proportions for the Acute care programme
 fixed_variable_prop <- read_sav("data/Fixed_Variable_Ratios_Acute.sav") |> 
-  mutate(across(where(is.numeric), ~.x/100)) |> 
+  # mutate(across(where(is.numeric), ~.x/100)) |> 
   rename("fixed_costs_prop" = "fixed", "variable_costs_prop" = "variable")
 ```
 
@@ -87,7 +87,7 @@ Goal: The goal in this section is to calculate total workforce costs by line num
 We source the necessary workforce costs data from various Scottish Financial Returns (SFR), see table below:
 
 | Form Name | Description | Columns |
-|----|----|----|
+|------------------------|------------------------|------------------------|
 | SFR 5.3 | Inpatient costs | col 3 (number of discharges), col 7-12 (costs by staff type) |
 | SFR 5.5 | Day Case costs | col 1 (number of attendances), col 5-10 (costs by staff type) |
 | SFR 5.7 | Outpatients treated in consultant clinics | col 1 (number of attendances), col 6-11 (costs by staff type) |
@@ -177,7 +177,7 @@ The above is executed by a modified version of the NRAC Acute costs weights scri
 
 ```{r}
 
-workforce_cost_per_head <- readRDS("data/acute_cost_per_head_workforce_all_staff_31032026.rds") |> 
+workforce_cost_per_head <- readRDS("data/acute_cost_per_head_v26_27_workforce.rds") |> 
   mutate(acute_cph = round(acute_cph, 1)) |> 
   add_staff_label() |> 
   add_age_labels() |> 
@@ -294,11 +294,7 @@ girafe_plot_options(p_m)
 
 ## Next Steps
 
--   Overlay workforce costs curves with acute expenditure.
-
--   Re-run with the exists fixed/variable costs breakdown used in NRAC.
-
--   Meet with SR week starting 29th March, and send JP a `.csv` of the acute workforce cost per head in relational format.
+-   Meet with SR week starting 5th April, and send JP a `.csv` of the acute workforce cost per head in relational format.
 
 -   TBC: get costs-curve for the care of the elderly program for SR.
 

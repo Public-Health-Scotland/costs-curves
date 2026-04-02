@@ -33,14 +33,10 @@ plot_total_vs_workforce <- function(x, x_title){
                              )
                            )+
     geom_line_interactive()+
-    
-    # scale the Y axis to log base 10 
-    scale_y_log10() +
-    
+
     # labels, colors, themes
     scale_x_continuous(breaks = c(1:length(x_axis_labels)), labels = x_axis_labels)+
-    labs(title = x_title, x = "Age Group", y = "log_10(Cost per Head)", 
-         subtitle = "Cost per head figures are plotted on a log base 10 scale", 
+    labs(title = x_title, x = "Age Group", y = "Cost per Head", 
          color = "Costs Category", shape = "Costs Category")+
     scale_color_manual_interactive(values = viridis(begin = 0.25, end = 0.75, n = 2, option = "magma"))+
     theme_minimal()+

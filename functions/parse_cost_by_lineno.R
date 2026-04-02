@@ -67,8 +67,8 @@ parse_cost_by_lineno <- function(sfr){
     left_join(fixed_variable_prop, by = c("ipdc", "lineno")) |> 
     
     # calculate fixed and variable costs
-    mutate(fixed_cost = cost * fixed_costs_prop, 
-           variable_cost = cost * variable_costs_prop)
+    mutate(fixed_cost = cost * fixed_costs_prop / 100, 
+           variable_cost = cost * variable_costs_prop / 100)
   
   return(costs_by_lineno)
 }
