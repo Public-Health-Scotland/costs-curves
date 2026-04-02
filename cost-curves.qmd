@@ -69,7 +69,7 @@ The acute cost per head output is sourced from <https://github.com/Public-Health
 ```{r}
 
 total_exp_cost_per_head <- readRDS("data/acute_cost_per_head_v26_27.rds") |>
-  mutate(acute_cph = round(acute_cph, 2)) |> 
+  mutate(acute_cph = round(acute_cph, 2), sex = as.integer(sex)) |> 
   add_age_labels() |> 
   add_sex_label()
 
@@ -181,9 +181,13 @@ workforce_cost_per_head <- readRDS("data/acute_cost_per_head_v26_27_workforce.rd
   mutate(acute_cph = round(acute_cph, 1)) |> 
   add_staff_label() |> 
   add_age_labels() |> 
-  add_sex_label()
+  add_sex_label() |> 
+  mutate(sex = as.integer(sex))
 
+# save a csv copy of acute workforce cost per head for SG
+write_csv(workforce_cost_per_head, "outputs/acute_cost_per_head_v26_27_workforce.csv")
 
+# overview of the cost per head by staff type age group and sex
 workforce_cost_per_head |> select(staff_type_label, agegrp_label, sex_label, acute_cph)
 ```
 

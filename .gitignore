@@ -5,8 +5,10 @@
 
 *.[Rr][Dd][Ss]
 *.[Ss][Aa][Vv]
+*.[Cc][Ss][Vv]
 *.html
 
+outputs/
 data/
 data-archive/
 /.quarto/
