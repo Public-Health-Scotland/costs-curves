@@ -87,7 +87,7 @@ Goal: The goal in this section is to calculate total workforce costs by line num
 We source the necessary workforce costs data from various Scottish Financial Returns (SFR), see table below:
 
 | Form Name | Description | Columns |
-|----|----|----|
+|------------------------|------------------------|------------------------|
 | SFR 5.3 | Inpatient costs | col 3 (number of discharges), col 7-12 (costs by staff type) |
 | SFR 5.5 | Day Case costs | col 1 (number of attendances), col 5-10 (costs by staff type) |
 | SFR 5.7 | Outpatients treated in consultant clinics | col 1 (number of attendances), col 6-11 (costs by staff type) |
@@ -163,7 +163,19 @@ sfr_list <- list(sfr_53, sfr_55, sfr_57, sfr_57n, sfr_59)
 
 output_list <- lapply(sfr_list, parse_cost_by_lineno)
 
-workforce_costs_by_lineno <- do.call(rbind, output_list)
+workforce_costs_by_lineno <- do.call(rbind, output_list) |> 
+  
+  # sum costs and activity by ipdc, lineno and staff type
+  group_by(ipdc, lineno, staff_type) |> 
+  summarise(across(where(is.numeric), ~sum(.)), .groups = "drop") |> 
+  
+  # join fixed and variable cost proportions
+  left_join(fixed_variable_prop, by = c("ipdc", "lineno")) |> 
+  
+  # calculate fixed and variable costs
+  mutate(fixed_cost = cost * fixed_costs_prop / 100, 
+         variable_cost = cost * variable_costs_prop / 100)
+
 workforce_costs_by_lineno
 
 saveRDS(workforce_costs_by_lineno, "outputs/workforce_costs_by_lineno.rds")
@@ -189,6 +201,7 @@ write_csv(workforce_cost_per_head, "outputs/acute_cost_per_head_v26_27_workforce
 
 # overview of the cost per head by staff type age group and sex
 workforce_cost_per_head |> select(staff_type_label, agegrp_label, sex_label, acute_cph)
+
 ```
 
 ## Acute Costs Curves by Staff Type
