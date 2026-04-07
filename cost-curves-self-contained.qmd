@@ -1,0 +1,281 @@
+---
+title: "Workforce Cost Curves: Acute care programme"
+execute: 
+  echo: false
+format: 
+   html:
+    embed-resources: true
+    df-print: paged
+    toc: true
+---
+
+**For Management Information Only**
+
+```{r}
+#| output: false
+
+# set-up
+
+# data retrieval and wrangling tools
+library(haven)
+library(rlist)
+library(readr)
+library(janitor)
+library(dplyr)
+library(tidyr)
+library(odbc)
+
+# data viz tools for pretty interactive graphs
+library(ggplot2)
+library(patchwork)
+library(ggiraph)
+library(viridis)
+library(scales)
+
+# load custom functions
+for (filename in list.files(
+  "functions", pattern = "\\.R", full.names = TRUE, 
+  recursive = TRUE)
+) {
+  source(filename)
+}
+
+# load reference files
+cbdcs_column_dictionary_sfr_53 <- read_csv("reference_files/cbdcs_column_dictionary.csv", show_col_types = FALSE) |> 
+  clean_names() |> 
+  filter(cd_formname == "SFR 5.3") |> 
+  remove_constant() |> 
+  mutate(cd_snakecase_description = make_clean_names(cd_description), 
+         cd_columnno = as.character(paste0("col", cd_columnno)))
+
+#if outputs directory doesnt exist create it
+if(!(dir.exists("./outputs"))){
+  dir.create("./outputs")
+}
+
+# import the fixed and variable cost proportions for the Acute care programme
+fixed_variable_prop <- read_sav("data/Fixed_Variable_Ratios_Acute.sav") |> 
+  # mutate(across(where(is.numeric), ~.x/100)) |> 
+  rename("fixed_costs_prop" = "fixed", "variable_costs_prop" = "variable")
+
+# total expenditure cost per head
+total_exp_cost_per_head <- readRDS("data/acute_cost_per_head_v26_27.rds") |>
+  mutate(acute_cph = round(acute_cph, 2), sex = as.integer(sex)) |> 
+  add_age_labels() |> 
+  add_sex_label()
+```
+
+## Caveats Summary
+
+-   Workforce costs are derived using the same fixed/variable costs proportions for total expenditure cost per head in the NRAC publication.
+-   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
+-   Combines workforce costs from SFRs: 5.3, 5.5, 5.7N, 5.7 and 5.9. Apart from Medical, Dental and Nursing, all other staff costs include supplies.
+-   Uses activity data A&E, SMR00 (outpatients), and SMR01 (inpatients and daycases) to derive total costs.
+-   Cost per head is derived by dividing the total costs by the 2024 mid-year population estimates provided by NRS.
+
+## 23/24 Acute Workforce Costs Data
+
+Workforce costs by line number were derived following the same methodology as for the total expenditure used in the NRAC publication.
+
+These workforce costs data are sourced from various Scottish Financial Returns (SFR), see table below:
+
+| Form Name | Description | Columns |
+|------------------------|------------------------|------------------------|
+| SFR 5.3 | Inpatient costs | col 3 (number of discharges), col 7-12 (costs by staff type) |
+| SFR 5.5 | Day Case costs | col 1 (number of attendances), col 5-10 (costs by staff type) |
+| SFR 5.7 | Outpatients treated in consultant clinics | col 1 (number of attendances), col 6-11 (costs by staff type) |
+| SFR 5.7N | Outpatients treated at nurse-led clinics | col 1 (number of attendances), col 4-7 (costs by staff type) |
+| SFR 5.9 | Day Patients | col 1 (number of attendances), col 4-8 (costs by staff type) |
+
+***NHS Borders costs are excluded from these data since they were unable to submit a full SFR dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21)***
+
+```{r}
+id_df <- read_csv(
+  "/PHI_conf/Finance/CostsBook/Reference Files/userid.csv",
+  col_types = "c"
+)
+uid <- id_df$username
+pwd <- id_df$password
+
+id_colnames <- c("formname", "provider", "location", "lineno")
+
+# get costs data
+sfr_53 <- get_costs_data(2023, "SFR 5.3") |>
+  select(all_of(id_colnames), col3, c(col7:col12)) |>
+  # remove rows where all pay columns are have 0 costs
+  filter(!if_all(where(is.numeric), ~ .x==0))
+
+# rename columns to something humans can understand
+colnames(sfr_53) <- human_cbdcs_colnames(sfr_53) 
+
+sfr_55 <- get_costs_data(2023, "SFR 5.5")|> 
+  select(all_of(id_colnames), col1, c(col5:col10)) |>
+  # remove rows where all pay columns are have 0 costs
+  filter(!if_all(where(is.numeric), ~ .x==0))
+
+colnames(sfr_55) <- human_cbdcs_colnames(sfr_55)
+# sfr_55
+
+sfr_57 <- get_costs_data(2023, "SFR 5.7")|> 
+  select(all_of(id_colnames), col1, c(col6:col11)) |>
+  # remove rows where all pay columns are have 0 costs
+  filter(!if_all(where(is.numeric), ~ .x==0))
+
+colnames(sfr_57) <- human_cbdcs_colnames(sfr_57)
+# sfr_57
+
+sfr_57n <- get_costs_data(2023, "SFR 5.7N")|> 
+  select(all_of(id_colnames), col1, c(col4:col7)) |>
+  # remove rows where all pay columns are have 0 costs
+  filter(!if_all(where(is.numeric), ~ .x==0))
+
+colnames(sfr_57n) <- human_cbdcs_colnames(sfr_57n)
+# sfr_57n
+
+sfr_59 <- get_costs_data(2023, "SFR 5.9")|> 
+  select(all_of(id_colnames), col1, c(col4:col8)) |>
+  # remove rows where all pay columns are have 0 costs
+  filter(!if_all(where(is.numeric), ~ .x==0))
+
+colnames(sfr_59) <- human_cbdcs_colnames(sfr_59)
+# sfr_59
+
+
+```
+
+Here's an example of what the SFR data looks like:
+
+```{r}
+sfr_53
+```
+
+The SFR line numbers are recoded to map these costs to the correct specialties in the Scottish Morbidity Records(SMR) activity data. Then, workforce costs are aggregated at specialty level (ie. aggregated by SFR line number) and patient type. We have limited data on which proportion of the workforce costs reported are fixed (eg. core staff), and which are variable (eg. NHS staff bank, overtime, etc.). Therefore, we assume that the proportions of fixed/variable costs per costsbook line number are the same as for total expenditure costs.
+
+Here is an overview of the aggregated workforce costs by patient type, line number and staff type:
+
+```{r}
+sfr_list <- list(sfr_53, sfr_55, sfr_57, sfr_57n, sfr_59)
+
+output_list <- lapply(sfr_list, parse_cost_by_lineno)
+
+workforce_costs_by_lineno <- do.call(rbind, output_list) |> 
+  
+  # sum costs and activity by ipdc, lineno and staff type
+  group_by(ipdc, lineno, staff_type) |> 
+  summarise(across(where(is.numeric), ~sum(.)), .groups = "drop") |> 
+  
+  # join fixed and variable cost proportions
+  left_join(fixed_variable_prop, by = c("ipdc", "lineno")) |> 
+  
+  # calculate fixed and variable costs
+  mutate(fixed_cost = cost * fixed_costs_prop / 100, 
+         variable_cost = cost * variable_costs_prop / 100)
+
+workforce_costs_by_lineno
+
+saveRDS(workforce_costs_by_lineno, "outputs/workforce_costs_by_lineno.rds")
+```
+
+## Workforce cost per head estimates
+
+The aggregated workforce costs data is joined with the A&E, Outpatients (SMR00) and Inpatients & Day Cases (SMR01) activity data. The activity data is used to derive a total cost per age-sex group, then these costs are divided by the mid-year population estimates, giving an estimated cost per head.
+
+This is executed using the same methodology as the NRAC publication for total expenditure cost per head.
+
+```{r}
+
+workforce_cost_per_head <- readRDS("data/acute_cost_per_head_v26_27_workforce.rds") |> 
+  mutate(acute_cph = round(acute_cph, 1)) |> 
+  add_staff_label() |> 
+  add_age_labels() |> 
+  add_sex_label() |> 
+  mutate(sex = as.integer(sex))
+
+# save a csv copy of acute workforce cost per head for SG
+write_csv(workforce_cost_per_head, "outputs/acute_cost_per_head_v26_27_workforce.csv")
+
+# overview of the cost per head by staff type age group and sex
+workforce_cost_per_head |> select(staff_type_label, agegrp_label, sex_label, acute_cph)
+
+```
+
+## Plots
+
+### Acute Costs Curves by Staff Type
+
+```{r}
+
+staff_types <- unique(workforce_cost_per_head$staff_type_label)
+
+# create a cost-curves plot for each staff type
+acute_plots <- list()
+
+for(i in 1:length(staff_types)){
+  
+  staff_type_i <- staff_types[i]
+  
+  data_i <- workforce_cost_per_head |> 
+                filter(staff_type_label == staff_type_i)
+  
+  plot_i <- plot_cost_curves(x = data_i, x_title = staff_type_i)
+  
+  # add plot to list  
+  acute_plots <- list.append(acute_plots, plot_i)
+  
+  names(acute_plots)[i] <- staff_type_i
+}
+
+```
+
+Costs curves for the Acute care programme across all staff types.
+
+```{r}
+
+girafe_plot_options(acute_plots[[which(names(acute_plots) == "All Staff")]])
+```
+
+Breakdown of the cost per head by staff type.
+
+```{r}
+# combine all the plots except for all staff
+patchwork <- wrap_plots(acute_plots[which(names(acute_plots) != "All Staff")], 
+                        ncol = 2,
+                        nrow = 3,
+                        axis_titles = "collect", 
+                        guides = "collect")
+
+girafe_plot_options(patchwork)
+
+```
+
+### Comparison: Workforce Expenditure vs Total Expenditure
+
+Does the acute cost per head for workforce costs follow the same trend as the cost per head for total expenditure?
+
+```{r}
+
+# create a dataframe with workforce data for all staff and data for total expenditure
+comparison_df <- workforce_cost_per_head |> 
+  filter(staff_type == "all_staff") |> 
+  select(-staff_type, -staff_type_label) |> 
+  left_join(total_exp_cost_per_head, by = c("agegrp", "sex", "agegrp_label", "sex_label"), suffix = c("_workforce", "_total")) |> 
+  pivot_longer(c("acute_cph_workforce", "acute_cph_total"), names_to = "costs_type", values_to = "acute_cph") |> 
+  mutate(costs_type = if_else(costs_type == "acute_cph_workforce", "workforce", "total expenditure"), acute_cph_log = log(acute_cph))
+  
+# filter females
+comparison_df_f <- comparison_df |> 
+  filter(sex == "2")
+
+# filter males
+comparison_df_m <- comparison_df |> 
+  filter(sex == "1")
+
+
+# plot one chart for females and one chart for males
+p_f <- plot_total_vs_workforce(comparison_df_f, "Acute cost per head for females, total expenditure VS workforce" )
+p_m <- plot_total_vs_workforce(comparison_df_m, "Acute cost per head for males, total expenditure VS workforce" )
+
+girafe_plot_options(p_f)
+girafe_plot_options(p_m)
+
+```
