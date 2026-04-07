@@ -304,11 +304,9 @@ girafe_plot_options(p_m)
 
 -   Workforce costs are derived using the same fixed/variable costs proportions for total expenditure cost per head in the NRAC publication.
 -   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
--   Combines workforce costs from SFRs: 5.3, 5.5, 5.7N, 5.7 and 5.9.
+-   Combines workforce costs from SFRs: 5.3, 5.5, 5.7N, 5.7 and 5.9. Apart from Medical, Dental and Nursing, all other staff costs include supplies.
 -   Uses activity data A&E, SMR00 (outpatients), and SMR01 (inpatients and daycases) to derive total costs.
--   Uses 2024 mid-year estimates population data provided by NRS to derive the cost per head.
--   Apart from Medical, Dental and Nursing, all other staff costs include supplies.
--   Cost per head is derived by dividing the total costs by mid year population estimates from NRS.
+-   Cost per head is derived by dividing the total costs by the 2024 mid-year population estimates provided by NRS.
 
 ## Next Steps
 
