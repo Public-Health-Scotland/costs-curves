@@ -156,7 +156,7 @@ Here's an example of what the SFR data looks like.
 sfr_53
 ```
 
-Next, let's recode SFR line numbers to map these costs to the correct specialties in the Scottish Morbidity Records(SMR) activity data. Finally, let's aggregate the workforce costs at specialty level (ie. aggregate costs by line number and patient type). Here we assume that the proportion of the costs that are fixed is 1. We assume this because we have limited data on which proportion of the workforce costs reported are fixed (eg. core staff), and which are variable (eg. NHS staff bank, overtime, etc.). This is all neatly packaged in the function `parse_cost_by_lineno` and iterated over all the SFRs.
+Next, let's recode SFR line numbers to map these costs to the correct specialties in the Scottish Morbidity Records(SMR) activity data. Finally, let's aggregate the workforce costs at specialty level (ie. aggregate costs by line number and patient type). We have limited data on which proportion of the workforce costs reported are fixed (eg. core staff), and which are variable (eg. NHS staff bank, overtime, etc.). Therefore, we assume that the proportions of fixed/variable costs per costsbook line number are the same as for total expenditure costs. This is all neatly packaged in the function `parse_cost_by_lineno` and iterated over all the SFRs.
 
 ```{r}
 sfr_list <- list(sfr_53, sfr_55, sfr_57, sfr_57n, sfr_59)
