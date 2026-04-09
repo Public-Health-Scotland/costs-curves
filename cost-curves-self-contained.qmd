@@ -85,7 +85,7 @@ Workforce costs by line number were derived following the same methodology as fo
 These workforce costs data are sourced from various Scottish Financial Returns (SFRs), see table below:
 
 | Form Name | Description | SFR columns (staff type costs) |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | SFR 5.3 | Inpatient costs | 7-12 |
 | SFR 5.5 | Day Case costs | 5-10 |
 | SFR 5.7 | Outpatients treated in consultant-led clinics | 6-11 |
