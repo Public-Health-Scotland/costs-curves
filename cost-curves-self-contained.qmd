@@ -9,7 +9,7 @@ format:
     toc: true
 ---
 
-**For Management Information Only**
+[For Management Information only, not for onward distribution.]{style="color:red;"}
 
 ```{r}
 #| output: false
@@ -248,7 +248,7 @@ girafe_plot_options(patchwork)
 
 ```
 
-### Comparison: Workforce Expenditure vs Total Expenditure
+### Workforce Expenditure vs Total Expenditure
 
 Does the acute cost per head for workforce costs follow the same trend as the cost per head for total expenditure?
 
@@ -260,7 +260,7 @@ comparison_df <- workforce_cost_per_head |>
   select(-staff_type, -staff_type_label) |> 
   left_join(total_exp_cost_per_head, by = c("agegrp", "sex", "agegrp_label", "sex_label"), suffix = c("_workforce", "_total")) |> 
   pivot_longer(c("acute_cph_workforce", "acute_cph_total"), names_to = "costs_type", values_to = "acute_cph") |> 
-  mutate(costs_type = if_else(costs_type == "acute_cph_workforce", "workforce", "total expenditure"), acute_cph_log = log(acute_cph))
+  mutate(costs_type = if_else(costs_type == "acute_cph_workforce", "workforce", "total expenditure"))
   
 # filter females
 comparison_df_f <- comparison_df |> 
@@ -277,5 +277,26 @@ p_m <- plot_total_vs_workforce(comparison_df_m, "Acute cost per head for males, 
 
 girafe_plot_options(p_f)
 girafe_plot_options(p_m)
+
+```
+
+### Proportion of the total cost per head which is attributed to workforce costs
+
+What is the percentage of the total cost per head that can be attributed to staff costs? The charts below explore how the share of staff costs evolves across different staff types, age groups and sexes.
+
+```{r}
+proportion_df <- workforce_cost_per_head |> 
+  left_join(total_exp_cost_per_head, by = c("agegrp", "sex", "agegrp_label", "sex_label"), suffix = c("_workforce", "_total")) |> 
+  # mutate(prop_of_total_exp = round(acute_cph_workforce/acute_cph_total, 2))
+  mutate(prop_of_total_exp = acute_cph_workforce/acute_cph_total)
+
+p_f_prop <- plot_prop_of_total_expenditure(proportion_df |> filter(sex == 2), 
+                                      "Proportion of total cost per head by age and staff type for females")
+p_m_prop <- plot_prop_of_total_expenditure(proportion_df |> filter(sex == 1), 
+                                      "Proportion of total cost per head by age and staff type for males")
+
+
+girafe_plot_options(p_f_prop)
+girafe_plot_options(p_m_prop)
 
 ```
