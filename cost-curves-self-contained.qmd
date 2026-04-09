@@ -1,16 +1,15 @@
 ---
 title: "Workforce Cost Curves: Acute care programme"
+execute: 
+  echo: false
 format: 
    html:
-     df-print: paged
-     toc: true
+    embed-resources: true
+    df-print: paged
+    toc: true
 ---
 
-**Main Goal: Plot the cost per head by age band and sex, for the NRAC acute care programme. These outputs rely on the NRAC cost per head calculations**
-
-Throughout this report we split this main goal into smaller goals to make things easier to digest.
-
-## Set-up
+[For Management Information only, not for onward distribution.]{style="color:red;"}
 
 ```{r}
 #| output: false
@@ -58,41 +57,40 @@ if(!(dir.exists("./outputs"))){
 fixed_variable_prop <- read_sav("data/Fixed_Variable_Ratios_Acute.sav") |> 
   # mutate(across(where(is.numeric), ~.x/100)) |> 
   rename("fixed_costs_prop" = "fixed", "variable_costs_prop" = "variable")
-```
 
-## Reproduce the NRAC 26/27 Acute costs curve for all Acute costs
-
-Load the acute cost per head output from the NRAC 26/27 publication. Then, plot the cost per head by age group and sex.
-
-The acute cost per head output is sourced from <https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/2-cost-weights/1-acute_cost_weights.R>.
-
-```{r}
-
+# total expenditure cost per head
 total_exp_cost_per_head <- readRDS("data/acute_cost_per_head_v26_27.rds") |>
   mutate(acute_cph = round(acute_cph, 2), sex = as.integer(sex)) |> 
   add_age_labels() |> 
   add_sex_label()
-
-p <- plot_cost_curves(total_exp_cost_per_head, x_title = "Acute cost per head by age and sex for total expenditure")
-
-girafe_plot_options(p)
 ```
 
-Let's attempt to produce a similar output for workforce costs only.
+## Aim
+
+To calculate the workforce cost per head by following the same methodology as used in the NRAC formula to derive the total cost per head. For clarity, this refers to the cost per capita, not the cost per patient.
+
+## Caveats Summary
+
+-   Workforce costs are derived using the same fixed/variable cost proportions that are used to calculate total expenditure cost per head in the NRAC formula. These are applied to inpatient data only and determine the proportion of cost attributable to discharges (fixed) and bed days (variable).
+-   The fixed/variable proportions are intended to act as case-mix adjustment but are limited to the extent that they do not precisely attach greater cost to episodes of care which are more resource intensive. This should be given consideration when interpreting the workforce or total costs per head presented or using them in other analysis.
+-   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
+-   Combines workforce costs from SFRs: 5.3, 5.5, 5.7, 5.7N and 5.9. Apart from Medical, Dental and Nursing, all other staff costs include supplies.
+-   Uses activity data A&E, SMR00 (outpatients), and SMR01 (inpatients and daycases) to apportion costs.
+-   Cost per head is derived by dividing the total cost for each age/sex group by the 2024 mid-year population estimates provided by NRS.
 
 ## 23/24 Acute Workforce Costs Data
 
-Goal: The goal in this section is to calculate total workforce costs by line number, following a similar methodology as in the [NRAC hospital activity costs](https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/1-costs/3-hospital_activity_costs.R)
+Workforce costs by line number were derived following the same methodology as for the total expenditure used in the NRAC formula.
 
-We source the necessary workforce costs data from various Scottish Financial Returns (SFR), see table below:
+These workforce costs data are sourced from various Scottish Financial Returns (SFRs), see table below:
 
-| Form Name | Description | Columns |
-|------------------------|------------------------|------------------------|
-| SFR 5.3 | Inpatient costs | col 3 (number of discharges), col 7-12 (costs by staff type) |
-| SFR 5.5 | Day Case costs | col 1 (number of attendances), col 5-10 (costs by staff type) |
-| SFR 5.7 | Outpatients treated in consultant clinics | col 1 (number of attendances), col 6-11 (costs by staff type) |
-| SFR 5.7N | Outpatients treated at nurse-led clinics | col 1 (number of attendances), col 4-7 (costs by staff type) |
-| SFR 5.9 | Day Patients | col 1 (number of attendances), col 4-8 (costs by staff type) |
+| Form Name | Description | SFR columns (staff type costs) |
+|----|----|----|
+| SFR 5.3 | Inpatient costs | 7-12 |
+| SFR 5.5 | Day Case costs | 5-10 |
+| SFR 5.7 | Outpatients treated in consultant-led clinics | 6-11 |
+| SFR 5.7N | Outpatients treated in nurse-led clinics | 4-7 |
+| SFR 5.9 | Day Patients | 4-8 |
 
 ***NHS Borders costs are excluded from these data since they were unable to submit a full SFR dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21)***
 
@@ -150,13 +148,15 @@ colnames(sfr_59) <- human_cbdcs_colnames(sfr_59)
 
 ```
 
-Here's an example of what the SFR data looks like.
+Here's an example of what the SFR data looks like:
 
 ```{r}
 sfr_53
 ```
 
-Next, let's recode SFR line numbers to map these costs to the correct specialties in the Scottish Morbidity Records(SMR) activity data. Finally, let's aggregate the workforce costs at specialty level (ie. aggregate costs by line number and patient type). We have limited data on which proportion of the workforce costs reported are fixed (eg. core staff), and which are variable (eg. NHS staff bank, overtime, etc.). Therefore, we assume that the proportions of fixed/variable costs per costsbook line number are the same as for total expenditure costs. This is all neatly packaged in the function `parse_cost_by_lineno` and iterated over all the SFRs.
+The SFR line numbers are recoded to map these costs to the correct specialties in the Scottish Morbidity Records (SMR) activity data. Then, workforce costs are aggregated at specialty level (i.e. aggregated by SFR line number) and patient type (inpatient, day case or outpatient). We have limited data on which proportion of the workforce costs reported are fixed (e.g. core staff), and which are variable (e.g. NHS staff bank, overtime, etc.). Therefore, we assume that the proportions of fixed/variable costs per Cost Book line number are the same as for total expenditure costs.
+
+Here is an overview of the aggregated workforce costs by patient type, line number and staff type:
 
 ```{r}
 sfr_list <- list(sfr_53, sfr_55, sfr_57, sfr_57n, sfr_59)
@@ -181,11 +181,11 @@ workforce_costs_by_lineno
 saveRDS(workforce_costs_by_lineno, "outputs/workforce_costs_by_lineno.rds")
 ```
 
-## Calculate cost per head
+## Workforce cost per head estimates
 
-Now that the data is aggregated by patient type and line number, we can more accurately match the costs for the financial year to A&E, Outpatients (SMR00) and Inpatients & Day Cases (SMR01) activity data. The activity data is used to derive a total cost per age-sex group, then these costs are divided by the mid year population estimates, giving an estimated cost per head.
+The aggregated workforce costs data is joined with the A&E, Outpatients (SMR00) and Inpatients & Day Cases (SMR01) activity data. A total cost is apportioned to each age/sex group based on the activity they account for and the fixed (number of discharges) and variable (number of bed days) breakdown. Each cost is then divided by the number of people in each age/sex group in the mid-year population estimates, giving an estimated cost per head.
 
-The above is executed by a modified version of the NRAC Acute costs weights script which I adapted to read-in the workforce costs data ([see code](https://github.com/Public-Health-Scotland/NRAC/commit/95408e57bcf23dbe1aaf479e1cd8e8972dccfaf0)).
+This is executed using the same methodology as the NRAC formula for total expenditure cost per head.
 
 ```{r}
 
@@ -204,9 +204,9 @@ workforce_cost_per_head |> select(staff_type_label, agegrp_label, sex_label, acu
 
 ```
 
-## Acute Costs Curves by Staff Type
+## Plots
 
-Now that we have the cost per head data by staff type, age-group & sex, let's plot the costs curves. The code below loops through each staff type and line chart showing the cost per head by age group, split between males and females.
+### Acute Costs Curves by Staff Type
 
 ```{r}
 
@@ -232,7 +232,7 @@ for(i in 1:length(staff_types)){
 
 ```
 
-Let's take a look at the costs curves for Acute across all staff types.
+Costs curves for the Acute care programme across all staff types.
 
 ```{r}
 
@@ -253,7 +253,7 @@ girafe_plot_options(patchwork)
 
 ```
 
-## Comparison
+### Workforce Expenditure vs Total Expenditure
 
 Does the acute cost per head for workforce costs follow the same trend as the cost per head for total expenditure?
 
@@ -265,7 +265,7 @@ comparison_df <- workforce_cost_per_head |>
   select(-staff_type, -staff_type_label) |> 
   left_join(total_exp_cost_per_head, by = c("agegrp", "sex", "agegrp_label", "sex_label"), suffix = c("_workforce", "_total")) |> 
   pivot_longer(c("acute_cph_workforce", "acute_cph_total"), names_to = "costs_type", values_to = "acute_cph") |> 
-  mutate(costs_type = if_else(costs_type == "acute_cph_workforce", "workforce", "total expenditure"), acute_cph_log = log(acute_cph))
+  mutate(costs_type = if_else(costs_type == "acute_cph_workforce", "workforce", "total expenditure"))
   
 # filter females
 comparison_df_f <- comparison_df |> 
@@ -285,33 +285,23 @@ girafe_plot_options(p_m)
 
 ```
 
-## Questions on methodology
+### Proportion of the total cost per head which is attributed to workforce costs
 
--   What are these costs curves going to be used for?
+What is the percentage of the total cost per head that can be attributed to staff costs? The charts below explore how the share of staff costs evolves across different staff types, age groups and sexes.
 
-    -   SR overlayed the acute costs curves with population curves, if we isolate solely workforce costs does that change the picture? Looking to predict workforce needs based on population/demand.
-    -   JP is trying to estimate the burden of disease and workforce demands, looking to do some modelling on how burden of disease will impact workforce demand.
+```{r}
+proportion_df <- workforce_cost_per_head |> 
+  left_join(total_exp_cost_per_head, by = c("agegrp", "sex", "agegrp_label", "sex_label"), suffix = c("_workforce", "_total")) |> 
+  # mutate(prop_of_total_exp = round(acute_cph_workforce/acute_cph_total, 2))
+  mutate(prop_of_total_exp = acute_cph_workforce/acute_cph_total)
 
--   Fixed vs Variable split? The [NRAC acute costs weight script](https://github.com/Public-Health-Scotland/NRAC/blob/develop/R/2-HCHS/1-age-sex/2-cost-weights/1-acute_cost_weights.R) uses fixed and variable cost proportions to derive a total cost based on whether the patient is an inpatient or daycase. However these proportions were derived from a SPSS syntax using PLICS data which does not seem to include workforce costs. This raises the question on whether a these fixed and variable cost ratios can be applied to the workforce costs in SFR 5.3. Ask SG if they how they plan to use the workforce cost per head, do they plan to use it as proportion of total costs?
+p_f_prop <- plot_prop_of_total_expenditure(proportion_df |> filter(sex == 2), 
+                                      "Proportion of total cost per head by age and staff type for females")
+p_m_prop <- plot_prop_of_total_expenditure(proportion_df |> filter(sex == 1), 
+                                      "Proportion of total cost per head by age and staff type for males")
 
-    -   if not too time consuming try re running the analysis using the existing fixed/variable split
 
--   Include Laboratory recharge costs? According to the costsbook user manual they include all costs such as: supplies, staff, and allocated costs such as heat, light and capital charges.
+girafe_plot_options(p_f_prop)
+girafe_plot_options(p_m_prop)
 
-    -   No labs costs needed.
-
-## Caveats Summary
-
--   Workforce costs are derived using the same fixed/variable costs proportions for total expenditure cost per head in the NRAC publication.
--   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
--   Combines workforce costs from SFRs: 5.3, 5.5, 5.7N, 5.7 and 5.9. Apart from Medical, Dental and Nursing, all other staff costs include supplies.
--   Uses activity data A&E, SMR00 (outpatients), and SMR01 (inpatients and daycases) to derive total costs.
--   Cost per head is derived by dividing the total costs by the 2024 mid-year population estimates provided by NRS.
-
-## Next Steps
-
--   Meet with SR week starting 5th April, and send JP a `.csv` of the acute workforce cost per head in relational format.
-
--   TBC: get costs-curve for the care of the elderly program for SR.
-
--   Bonus: publish and share Quarto report with a password.
+```
