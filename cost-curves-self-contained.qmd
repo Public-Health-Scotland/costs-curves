@@ -71,8 +71,8 @@ To calculate the workforce cost per head by following the same methodology as us
 
 ## Caveats Summary
 
--   Workforce costs are derived using the same fixed/variable cost proportions that are used to calculate total expenditure cost per head in the NRAC formula. These proportions are applied to inpatient data only and determine the proportion of cost attributable to discharges (fixed) and bed days (variable).
--   The fixed/variable proportions are intended to act as case-mix adjustment but they cannot precisely attach greater cost to episodes of care which are more resource intensive. This should be given consideration when interpreting the workforce or total costs per head presented or using them in other analysis.
+-   Workforce costs are derived using the same fixed/variable cost proportions that are used to calculate total expenditure cost per head in the NRAC formula. These are applied to inpatient data only and determine the proportion of cost attributable to discharges (fixed) and bed days (variable).
+-   The fixed/variable proportions are intended to act as case-mix adjustment but are limited to the extent that they do not precisely attach greater cost to episodes of care which are more resource intensive. This should be given consideration when interpreting the workforce or total costs per head presented or using them in other analysis.
 -   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
 -   Combines workforce costs from SFRs: 5.3, 5.5, 5.7, 5.7N and 5.9. Apart from Medical, Dental and Nursing, all other staff costs include supplies.
 -   Uses activity data A&E, SMR00 (outpatients), and SMR01 (inpatients and daycases) to apportion costs.
@@ -84,7 +84,7 @@ Workforce costs by line number were derived following the same methodology as fo
 
 These workforce costs data are sourced from various Scottish Financial Returns (SFRs), see table below:
 
-| Form Name | Description | SFR columns (costs by staff type) |
+| Form Name | Description | SFR columns (staff type costs) |
 |------------------------|------------------------|------------------------|
 | SFR 5.3 | Inpatient costs | 7-12 |
 | SFR 5.5 | Day Case costs | 5-10 |
