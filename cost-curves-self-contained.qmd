@@ -65,27 +65,32 @@ total_exp_cost_per_head <- readRDS("data/acute_cost_per_head_v26_27.rds") |>
   add_sex_label()
 ```
 
+## Aim
+
+To calculate the workforce cost per head by following the same methodology as used in the NRAC formula to derive the total cost per head. For clarity, this refers to the cost per capita, not the cost per patient.
+
 ## Caveats Summary
 
--   Workforce costs are derived using the same fixed/variable costs proportions for total expenditure cost per head in the NRAC publication.
+-   Workforce costs are derived using the same fixed/variable cost proportions that are used to calculate total expenditure cost per head in the NRAC formula. These proportions are applied to inpatient data only and determine the proportion of cost attributable to discharges (fixed) and bed days (variable).
+-   The fixed/variable proportions are intended to act as case-mix adjustment but they cannot precisely attach greater cost to episodes of care which are more resource intensive. This should be given consideration when interpreting the workforce or total costs per head presented or using them in other analysis.
 -   NHS Borders costs are excluded from these data since they were unable to submit a full SFR 5.3 dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21).
--   Combines workforce costs from SFRs: 5.3, 5.5, 5.7N, 5.7 and 5.9. Apart from Medical, Dental and Nursing, all other staff costs include supplies.
--   Uses activity data A&E, SMR00 (outpatients), and SMR01 (inpatients and daycases) to derive total costs.
--   Cost per head is derived by dividing the total costs by the 2024 mid-year population estimates provided by NRS.
+-   Combines workforce costs from SFRs: 5.3, 5.5, 5.7, 5.7N and 5.9. Apart from Medical, Dental and Nursing, all other staff costs include supplies.
+-   Uses activity data A&E, SMR00 (outpatients), and SMR01 (inpatients and daycases) to apportion costs.
+-   Cost per head is derived by dividing the total cost for each age/sex group by the 2024 mid-year population estimates provided by NRS.
 
 ## 23/24 Acute Workforce Costs Data
 
-Workforce costs by line number were derived following the same methodology as for the total expenditure used in the NRAC publication.
+Workforce costs by line number were derived following the same methodology as for the total expenditure used in the NRAC formula.
 
-These workforce costs data are sourced from various Scottish Financial Returns (SFR), see table below:
+These workforce costs data are sourced from various Scottish Financial Returns (SFRs), see table below:
 
-| Form Name | Description | Columns |
+| Form Name | Description | SFR columns (costs by staff type) |
 |------------------------|------------------------|------------------------|
-| SFR 5.3 | Inpatient costs | col 3 (number of discharges), col 7-12 (costs by staff type) |
-| SFR 5.5 | Day Case costs | col 1 (number of attendances), col 5-10 (costs by staff type) |
-| SFR 5.7 | Outpatients treated in consultant clinics | col 1 (number of attendances), col 6-11 (costs by staff type) |
-| SFR 5.7N | Outpatients treated at nurse-led clinics | col 1 (number of attendances), col 4-7 (costs by staff type) |
-| SFR 5.9 | Day Patients | col 1 (number of attendances), col 4-8 (costs by staff type) |
+| SFR 5.3 | Inpatient costs | 7-12 |
+| SFR 5.5 | Day Case costs | 5-10 |
+| SFR 5.7 | Outpatients treated in consultant-led clinics | 6-11 |
+| SFR 5.7N | Outpatients treated in nurse-led clinics | 4-7 |
+| SFR 5.9 | Day Patients | 4-8 |
 
 ***NHS Borders costs are excluded from these data since they were unable to submit a full SFR dataset for financial year 23/24 (see [23/24 Scottish Health Service Costs](https://publichealthscotland.scot/media/34037/2025-02-25-costs-report_final.pdf) p.21)***
 
@@ -149,7 +154,7 @@ Here's an example of what the SFR data looks like:
 sfr_53
 ```
 
-The SFR line numbers are recoded to map these costs to the correct specialties in the Scottish Morbidity Records(SMR) activity data. Then, workforce costs are aggregated at specialty level (ie. aggregated by SFR line number) and patient type. We have limited data on which proportion of the workforce costs reported are fixed (eg. core staff), and which are variable (eg. NHS staff bank, overtime, etc.). Therefore, we assume that the proportions of fixed/variable costs per costsbook line number are the same as for total expenditure costs.
+The SFR line numbers are recoded to map these costs to the correct specialties in the Scottish Morbidity Records (SMR) activity data. Then, workforce costs are aggregated at specialty level (i.e. aggregated by SFR line number) and patient type (inpatient, day case or outpatient). We have limited data on which proportion of the workforce costs reported are fixed (e.g. core staff), and which are variable (e.g. NHS staff bank, overtime, etc.). Therefore, we assume that the proportions of fixed/variable costs per Cost Book line number are the same as for total expenditure costs.
 
 Here is an overview of the aggregated workforce costs by patient type, line number and staff type:
 
@@ -178,9 +183,9 @@ saveRDS(workforce_costs_by_lineno, "outputs/workforce_costs_by_lineno.rds")
 
 ## Workforce cost per head estimates
 
-The aggregated workforce costs data is joined with the A&E, Outpatients (SMR00) and Inpatients & Day Cases (SMR01) activity data. The activity data is used to derive a total cost per age-sex group, then these costs are divided by the mid-year population estimates, giving an estimated cost per head.
+The aggregated workforce costs data is joined with the A&E, Outpatients (SMR00) and Inpatients & Day Cases (SMR01) activity data. A total cost is apportioned to each age/sex group based on the activity they account for and the fixed (number of discharges) and variable (number of bed days) breakdown. Each cost is then divided by the number of people in each age/sex group in the mid-year population estimates, giving an estimated cost per head.
 
-This is executed using the same methodology as the NRAC publication for total expenditure cost per head.
+This is executed using the same methodology as the NRAC formula for total expenditure cost per head.
 
 ```{r}
 
